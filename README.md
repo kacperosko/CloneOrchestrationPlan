@@ -13,7 +13,11 @@ This project aims to facilitate the cloning of Orchestration Plans in Salesforce
 ## Features
 
 - Clone an existing Orchestration Plan.
-- Copy child records associated with the Orchestration Plan, including Orchestration Scenarios, Plan Definitions, Item Definitions, and Dependency Definitions.
+- Copy child records associated with the Orchestration Plan, including:
+  - Orchestration Scenarios
+  - Orchestration Plan Definitions
+  - Orchestration Item Definitions
+  - Orchestration Item Dependency
 
 ## Installation
 
