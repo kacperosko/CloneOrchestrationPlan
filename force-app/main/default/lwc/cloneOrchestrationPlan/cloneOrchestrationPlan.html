@@ -1,0 +1,57 @@
+<template>
+    <lightning-card>
+        <template if:true={stepOne}>
+            <!-- Step 1 -->
+            <div class="slds-p-around_medium">
+                <!-- <lightning-record-picker
+                    label="Select Product (required)"
+                    placeholder="Search New Product..."
+                    object-api-name="Product2"
+                    onchange={handlePicker}
+                >
+                </lightning-record-picker> -->
+                <!-- <lightning-input label="Orchestration Plan New Name" type="text" value={scenarioName} onchange={handleTextChange} class="slds-m-bottom_medium" required="true"></lightning-input> -->
+                <h1 class="slds-m-bottom_medium">Do You want to clone this Orchestration Plan?</h1>
+                <lightning-button label="Go to Cloning setup" variant="brand" onclick={handleNext} ></lightning-button>
+            </div>
+        </template>
+
+        <template if:true={stepTwo}>
+            <!-- Step 2 -->
+            <div class="slds-p-around_medium">
+                <!-- Iterate through the scenariosMap and display Name and Product2 lookup for each record -->
+                <template for:each={scenariosMap} for:item="scenario">
+                    <div key={scenario.Id} style="margin-bottom: 10px;">
+                        <h1><b>{scenario.Name}</b></h1>
+                        <c-product-picker
+                            label="Select New Destination Product"
+                            onproductselected={handleProductSelected}
+                            pickerscenarioid={scenario.Id}
+                            pickerselectedname={scenario.Name}
+                        >
+                        </c-product-picker>
+                    </div>
+                </template>
+                <lightning-button label="Clone Plan" variant="brand" onclick={handleClone} style="margin-top: 20px;"></lightning-button>
+            </div>
+        </template>
+        
+        <template if:true={stepFinal}>
+
+            <div if:true={stepSpinner}>
+                <h1>Cloning Plan</h1>
+                <div class="slds-p-around_medium">
+                    <div class="">
+                        <lightning-spinner alternative-text="Loading" size="large"></lightning-spinner>
+                    </div>
+                </div>
+            </div>
+
+            <div if:false={stepSpinner}>
+                <h1>Cloning completed!</h1>
+            </div>
+
+        </template>
+        
+    </lightning-card>
+</template>

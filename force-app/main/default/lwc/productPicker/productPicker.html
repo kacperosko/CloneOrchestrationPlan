@@ -1,0 +1,11 @@
+<template>
+    
+    <lightning-input label="Orchestration Plan New Name" type="text" value={pickerselectedname}
+    onchange={picker_handleTextChange} class="slds-m-bottom_medium" required="true">
+    </lightning-input>
+    <lightning-record-picker
+        label={label}
+        object-api-name="Product2"
+        onchange={picker_handleRecordPick}
+    ></lightning-record-picker>
+</template>
