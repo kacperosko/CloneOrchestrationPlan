@@ -23,7 +23,7 @@ This project aims to facilitate the cloning of Orchestration Plans in Salesforce
 
 1. Clone the repository.
 2. Deploy the provided Apex class (`CloneOrchestrationScenario.cls`) to your Salesforce environment.
-3. Deploy the Lightning Web Component (LWC) by following these steps:
+3. Deploy the Lightning Web Component (LWC) `cloneOrchestrationPlan` and `productPicker`
 4. Ensure necessary permissions for the executing user to perform cloning and insertion operations.
 5. Add the LWC component to the Orchestration Scenario flexipage:
    - Navigate to Setup in your Salesforce org.
@@ -38,11 +38,18 @@ Now, when viewing an Orchestration Scenario, the `cloneOrchestrationPlan` compon
 
 ## Usage
 
-1. Go to Orchestraion Scenario that is your start point (that means it has the last Orchestration Item)
-2. Press the button 'Go to Cloninbg Setup' on added LWC component
-![Step 1](img/Step1.png)
-3. Script fill find all related Orchestration Scenarior.
-4. Populate the new name and new destination product for each found Orchestration Scenario
-![Step 2](img/Step2.png)
-5. Press 'Clone Plan'
+Follow these steps to clone an Orchestration Plan:
+
+1. Navigate to the Orchestration Scenario that serves as your starting point (it should have the last Orchestration Item).
+
+2. Click on the 'Go to Cloning Setup' button provided by the added Lightning Web Component (LWC).
+   ![Step 1](img/Step1.png)
+
+3. The script will automatically identify all related Orchestration Scenarios.
+
+4. For each identified Orchestration Scenario, enter the new name and select the destination product.
+   ![Step 2](img/Step2.png)
+
+5. Click the 'Clone Plan' button to initiate the cloning process.
+
 
