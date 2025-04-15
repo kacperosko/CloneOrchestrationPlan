@@ -1,5 +1,11 @@
 <template>
     <lightning-card>
+        <div lwc:if={error}>
+            <lightning-card>
+                <p>{error}</p>
+            </lightning-card>
+        </div>
+
         <template if:true={stepOne}>
             <!-- Step 1 -->
             <div class="slds-p-around_medium">
@@ -24,18 +30,20 @@
                     <div key={scenario.Id} style="margin-bottom: 10px;">
                         <h1><b>{scenario.Name}</b></h1>
                         <c-product-picker
-                            label="Select New Destination Product"
-                            onproductselected={handleProductSelected}
-                            pickerscenarioid={scenario.Id}
-                            pickerselectedname={scenario.Name}
+                                label="Select New Destination Product"
+                                onproductselected={handleProductSelected}
+                                pickerscenarioid={scenario.Id}
+                                pickerselectedname={scenario.Name}
                         >
                         </c-product-picker>
                     </div>
                 </template>
-                <lightning-button label="Clone Plan" variant="brand" onclick={handleClone} style="margin-top: 20px;"></lightning-button>
+                <template if:false={error}>
+                    <lightning-button label="Clone Plan" variant="brand" onclick={handleClone} style="margin-top: 20px;"></lightning-button>
+                </template>
             </div>
         </template>
-        
+
         <template if:true={stepFinal}>
 
             <div if:true={stepSpinner}>
@@ -48,10 +56,12 @@
             </div>
 
             <div if:false={stepSpinner}>
-                <h1>Cloning completed!</h1>
+                <div if:false={error}>
+                    <h1>Cloning completed!</h1>
+                </div>
             </div>
 
         </template>
-        
+
     </lightning-card>
 </template>

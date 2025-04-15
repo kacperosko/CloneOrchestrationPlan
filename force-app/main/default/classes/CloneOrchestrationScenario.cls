@@ -1,4 +1,4 @@
-global with sharing class CloneOrchestrationScenario{
+global with sharing class CloneOrchestrationScenario {
 
     public class ScenarioJSONWrapper {
         public String productId ;
@@ -10,14 +10,14 @@ global with sharing class CloneOrchestrationScenario{
     @AuraEnabled()
     global static Map<String, Object> invokeMethod(Map<String, Object> input) {
         Map<String, Object> output = new Map<String, Object>();
-        
+
         if (input.get('methodName') == 'cloneScenarioWithNewName') {
-            
+
             System.debug('methodName - > ' + input.get('methodName'));
             System.debug('scenariosMap - > ' + input.get('scenariosMap'));
             // example scenarios map:
             // scenariosMap - > ({productId=01tAd000000rZ1JIAU, scenarioId=a3TAd000000550fMAA, scenarioNewName=TEST Active Products E2E Change Link Type}, {productId=01t3H000003lUIpQAM, scenarioId=a3TAd000000552HMAQ, scenarioNewName=TEST  Product Globill CFS Change Link Type}, {productId=01tAd000000rZ1IIAU, scenarioId=a3TAd000000553tMAA, scenarioNewName=TEST  Active Product SDM CFS Change Link Type})
-            List<ScenarioJSONWrapper> scenariosMap = (List<ScenarioJSONWrapper>) JSON.deserialize((String)input.get('scenariosMap'), List<ScenarioJSONWrapper>.class);
+            List<ScenarioJSONWrapper> scenariosMap = (List<ScenarioJSONWrapper>) JSON.deserialize((String) input.get('scenariosMap'), List<ScenarioJSONWrapper>.class);
             System.debug('deserialized scenariosMap - > ' + scenariosMap);
             // List<Map<String, Object>> scenariosMap = (List<Map<String, Object>>) input.get('scenariosMap');
             // return true;
@@ -26,26 +26,40 @@ global with sharing class CloneOrchestrationScenario{
         if (input.get('methodName') == 'getScenarios') {
             System.debug('methodName - > ' + input.get('methodName'));
             System.debug('recordId - > ' + input.get('recordId'));
-            
-            Id recordId =  (Id)input.get('recordId');
-            vlocity_cmt__OrchestrationScenario__c scenario = [ SELECT Id, vlocity_cmt__OrchestrationPlanDefinitionId__c FROM vlocity_cmt__OrchestrationScenario__c WHERE Id =: recordId LIMIT 1 ];
+
+            Id recordId = (Id) input.get('recordId');
+            vlocity_cmt__OrchestrationScenario__c scenario = [
+                    SELECT Id, vlocity_cmt__OrchestrationPlanDefinitionId__c, vlocity_cmt__Product2Id__c,
+                            vlocity_cmt__Action__c, vlocity_cmt__SubAction__c FROM vlocity_cmt__OrchestrationScenario__c
+                    WHERE Id = :recordId LIMIT 1
+            ];
             System.debug('vlocity_cmt__OrchestrationPlanDefinitionId__c - > ' + scenario.vlocity_cmt__OrchestrationPlanDefinitionId__c);
-            
-            List<Id> plansIds = getAllPlanDeifinitions(scenario.vlocity_cmt__OrchestrationPlanDefinitionId__c);
-            System.debug('plansId - > ' + plansIds);
+
+            Set<Id> relatedProducts = new Set<Id>();
+            for (vlocity_cmt__DecompositionRelationship__c decompositionRelationship : [
+                    SELECT Id, vlocity_cmt__DestinationProductId__c, vlocity_cmt__SourceProductId__c
+                    FROM vlocity_cmt__DecompositionRelationship__c
+                    WHERE vlocity_cmt__SourceProductId__c = :scenario.vlocity_cmt__Product2Id__c
+            ]) {
+                relatedProducts.add(decompositionRelationship.vlocity_cmt__DestinationProductId__c);
+                relatedProducts.add(decompositionRelationship.vlocity_cmt__SourceProductId__c);
+            }
+
+            List<Id> plansIds = getAllPlanDefinitions(scenario.vlocity_cmt__OrchestrationPlanDefinitionId__c);
 
             Map<Id, String> scenariosMap = new Map<Id, String>{};
-            List <Map<String,String>> listMap = new List<Map<String,String>>();
-            scenariosMap = getScenariosMap(plansIds);
+            List <Map<String, String>> listMap = new List<Map<String, String>>();
+            // Adding filter to retrieve the related scenarios only by the initial action/subaction
+            // The idea is that this should be the same on all the levels for decomposition
+            scenariosMap = getScenariosMap(plansIds, scenario.vlocity_cmt__Action__c, scenario.vlocity_cmt__SubAction__c, relatedProducts);
 
             for (String key : scenariosMap.keySet()) {
-                Map<String,String> temp = new Map<String,String>();
+                Map<String, String> temp = new Map<String, String>();
                 temp.put('Id', key);
                 temp.put('Name', scenariosMap.get(key));
                 listMap.add(temp);
-                
+
             }
-            
 
             output.put('scenariosMap', listMap);
         }
@@ -55,14 +69,14 @@ global with sharing class CloneOrchestrationScenario{
 
     public static Boolean cloneScenarioWithNewName(List<ScenarioJSONWrapper> dataList) {
         // List<Id> newScenarioIds = new List<Id>();
-        
+
         // List<Id> receivedScenariosIds = new List<Id>();
         // for (Map<String, String> item : dataList) {
         //     if (item.containsKey('scenarioId') && item.get('scenarioId') != null) {
         //         receivedScenariosIds.add((Id)item.get('scenarioId'));
         //     }
         // }
-        
+
 
         // // Pobierz istniejący rekord vlocity_cmt__OrchestrationScenario__c
         // // List<String> fieldsScenario = getUpdateableFields(vlocity_cmt__OrchestrationScenario__c.SObjectType);
@@ -72,7 +86,7 @@ global with sharing class CloneOrchestrationScenario{
         //         + ' WHERE Id IN :receivedScenariosIds';
 
         // List<vlocity_cmt__OrchestrationPlanDefinition__c> existingScenariosList = Database.query(soqlScenario);
-        
+
 
         // List<Id> existingScenarios_PlanDefinitionIds = new List<Id>();
         // for (vlocity_cmt__OrchestrationPlanDefinition__c s : existingScenariosList) {
@@ -87,26 +101,26 @@ global with sharing class CloneOrchestrationScenario{
         // System.debug('query soqlPlan');
         // System.debug(Database.query(soqlPlan));
         // List<vlocity_cmt__OrchestrationPlanDefinition__c> existingPlanList = Database.query(soqlPlan);
-        
+
         // =====================
         Map<String, String> scenariosNewNameMap = new Map<String, String>();
         Map<String, String> scenariosNewProductMap = new Map<String, String>();
-        
+
         List<Id> receivedScenariosIds = new List<Id>();
         // {productId=01tAd000000rZ1JIAU, scenarioId=a3TAd000000550fMAA, scenarioNewName=TEST}
         for (ScenarioJSONWrapper item : dataList) {
             // if (item.containsKey('scenarioId') && item.get('scenarioId') != null) {
-            receivedScenariosIds.add((Id)item.scenarioId);
-            scenariosNewNameMap.put((String)item.scenarioId, (String)item.scenarioNewName);
-            scenariosNewProductMap.put((String)item.scenarioId,(String)item.productId);
+            receivedScenariosIds.add((Id) item.scenarioId);
+            scenariosNewNameMap.put((String) item.scenarioId, (String) item.scenarioNewName);
+            scenariosNewProductMap.put((String) item.scenarioId, (String) item.productId);
             // }
         }
 
         // Retrieve existing vlocity_cmt__OrchestrationScenario__c records
         List<vlocity_cmt__OrchestrationScenario__c> existingScenariosList = [
-            SELECT Id, vlocity_cmt__OrchestrationPlanDefinitionId__c
-            FROM vlocity_cmt__OrchestrationScenario__c
-            WHERE Id IN :receivedScenariosIds
+                SELECT Id, vlocity_cmt__OrchestrationPlanDefinitionId__c
+                FROM vlocity_cmt__OrchestrationScenario__c
+                WHERE Id IN :receivedScenariosIds
         ];
         Map<String, String> plansRelatedToScenarios = new Map<String, String>();
 
@@ -115,14 +129,14 @@ global with sharing class CloneOrchestrationScenario{
         for (vlocity_cmt__OrchestrationScenario__c s : existingScenariosList) {
             existingScenarios_PlanDefinitionIds.add(s.vlocity_cmt__OrchestrationPlanDefinitionId__c);
             queryScenariosIds.add(s.Id);
-            plansRelatedToScenarios.put((String)s.vlocity_cmt__OrchestrationPlanDefinitionId__c, (String)s.Id);
+            plansRelatedToScenarios.put((String) s.vlocity_cmt__OrchestrationPlanDefinitionId__c, (String) s.Id);
         }
 
         // Retrieve existing vlocity_cmt__OrchestrationPlanDefinition__c records
         List<vlocity_cmt__OrchestrationPlanDefinition__c> existingPlanList = [
-            SELECT Id
-            FROM vlocity_cmt__OrchestrationPlanDefinition__c
-            WHERE Id IN :existingScenarios_PlanDefinitionIds
+                SELECT Id
+                FROM vlocity_cmt__OrchestrationPlanDefinition__c
+                WHERE Id IN :existingScenarios_PlanDefinitionIds
         ];
 
         Map<String, String> plansNewNameMap = new Map<String, String>();
@@ -130,37 +144,37 @@ global with sharing class CloneOrchestrationScenario{
         List<Id> queryPlansIds = new List<Id>();
         for (vlocity_cmt__OrchestrationPlanDefinition__c p : existingPlanList) {
             queryPlansIds.add(p.Id);
-            
+
             String tempScnearioId = plansRelatedToScenarios.get(p.Id);
-            plansNewNameMap.put((String)p.Id, scenariosNewNameMap.get(tempScnearioId));
+            plansNewNameMap.put((String) p.Id, scenariosNewNameMap.get(tempScnearioId));
         }
 
-        Map<Id,Id> plansParentId = clonePlanDefinitions(queryPlansIds, plansNewNameMap);
+        Map<Id, Id> plansParentId = clonePlanDefinitions(queryPlansIds, plansNewNameMap);
 
-        Map<Id,Id> scenariosParentId = cloneScenarios(queryScenariosIds, scenariosNewNameMap, scenariosNewProductMap, plansParentId);
+        Map<Id, Id> scenariosParentId = cloneScenarios(queryScenariosIds, scenariosNewNameMap, scenariosNewProductMap, plansParentId);
 
         // =====================
 
-        Map<String,String> newOrchItems = cloneOrchestrationItemsWithDependencies(queryPlansIds, plansParentId);
-            
+        Map<String, String> newOrchItems = cloneOrchestrationItemsWithDependencies(queryPlansIds, plansParentId);
+
         return true;
     }
 
     global class CloneInput {
-        @InvocableVariable(label='Record ID')
+        @InvocableVariable(Label='Record ID')
         global String recordId;
 
-        @InvocableVariable(label='New Name')
+        @InvocableVariable(Label='New Name')
         global String newName;
-        
-        @InvocableVariable(label='Product Name')
+
+        @InvocableVariable(Label='Product Name')
         global String productName;
 
-        @InvocableVariable(label='Method Name')
+        @InvocableVariable(Label='Method Name')
         global String methodName;
     }
 
-    private static Map<Id,Id> clonePlanDefinitions(List<id> plansId, Map<String,String> newNames){
+    private static Map<Id, Id> clonePlanDefinitions(List<id> plansId, Map<String, String> newNames) {
         List<String> fieldsPlan = getUpdateableFields(vlocity_cmt__OrchestrationPlanDefinition__c.SObjectType);
         String soqlPlan = ''
                 + ' SELECT ' + String.join(fieldsPlan, ',')
@@ -169,7 +183,7 @@ global with sharing class CloneOrchestrationScenario{
         List<vlocity_cmt__OrchestrationPlanDefinition__c> queryPlans = Database.query(soqlPlan);
 
         List<sObject> clonedRecords = new List<sObject>();
-        
+
         for (vlocity_cmt__OrchestrationPlanDefinition__c plan : queryPlans) {
             vlocity_cmt__OrchestrationPlanDefinition__c clonedRecord = plan.clone(false, true);
             clonedRecord.put('Name', newNames.get(clonedRecord.getCloneSourceId()));
@@ -179,12 +193,12 @@ global with sharing class CloneOrchestrationScenario{
 
         insert clonedRecords;
 
-        Map<Id,Id> planParentId = new Map<Id, Id>();
+        Map<Id, Id> planParentId = new Map<Id, Id>();
 
-        for (sObject item : clonedRecords){
-            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() +', value -> ' + item.Id);
+        for (sObject item : clonedRecords) {
+            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() + ', value -> ' + item.Id);
             planParentId.put(item.getCloneSourceId(), item.Id);
-        }        
+        }
 
         return planParentId;
     }
@@ -198,7 +212,7 @@ global with sharing class CloneOrchestrationScenario{
     //     return null;
     // }
 
-    private static Map<Id,Id> cloneScenarios(List<id> scenariosIds, Map<String,String> newNames, Map<String,String> newProducts, Map<Id,Id> plansNewId){
+    private static Map<Id, Id> cloneScenarios(List<id> scenariosIds, Map<String, String> newNames, Map<String, String> newProducts, Map<Id, Id> plansNewId) {
         List<String> fieldsScenario = getUpdateableFields(vlocity_cmt__OrchestrationScenario__c.SObjectType);
         String soqlScenario = ''
                 + ' SELECT ' + String.join(fieldsScenario, ',')
@@ -206,15 +220,15 @@ global with sharing class CloneOrchestrationScenario{
                 + ' WHERE Id In :scenariosIds';
 
         List<vlocity_cmt__OrchestrationScenario__c> queryScenarios = Database.query(soqlScenario);
-         
+
         List<sObject> clonedRecords = new List<sObject>();
-        
+
         for (sObject scenario : queryScenarios) {
             sObject clonedRecord = scenario.clone(false, true);
             //     if (field != 'Id' && field != 'Name' && field != 'vlocity_cmt__Product2Id__c' && field != 'vlocity_cmt__OrchestrationPlanDefinitionId__c') {
             clonedRecord.put('Name', newNames.get(clonedRecord.getCloneSourceId()));
             clonedRecord.put('vlocity_cmt__Product2Id__c', newProducts.get(clonedRecord.getCloneSourceId()));
-            Id tempPlanId = (Id)clonedRecord.get('vlocity_cmt__OrchestrationPlanDefinitionId__c');
+            Id tempPlanId = (Id) clonedRecord.get('vlocity_cmt__OrchestrationPlanDefinitionId__c');
             clonedRecord.put('vlocity_cmt__OrchestrationPlanDefinitionId__c', plansNewId.get(tempPlanId));
 
             clonedRecords.add(clonedRecord);
@@ -222,36 +236,38 @@ global with sharing class CloneOrchestrationScenario{
 
         insert clonedRecords;
 
-        Map<Id,Id> scenarioParentId = new Map<Id, Id>();
+        Map<Id, Id> scenarioParentId = new Map<Id, Id>();
 
-        for (sObject item : clonedRecords){
-            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() +', value -> ' + item.Id);
+        for (sObject item : clonedRecords) {
+            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() + ', value -> ' + item.Id);
             scenarioParentId.put(item.getCloneSourceId(), item.Id);
-        }        
+        }
 
         return scenarioParentId;
     }
 
-    private static List<Id> getAllPlanDeifinitions(String planId) {
+    private static List<Id> getAllPlanDefinitions(String planId) {
         List<Id> tempPlan = new List<Id>();
-        tempPlan.add((Id)planId);
+        tempPlan.add((Id) planId);
         return getAllPlanDefinitions(tempPlan, new List<Id>());
     }
-    
-    
+
+
     private static List<Id> getAllPlanDefinitions(List<Id> planId, List<Id> skipDependencies) {
         Set<Id> uniquePlanIds = new Set<Id>();
-    
-        List<vlocity_cmt__OrchestrationDependencyDefinition__c> dependencies = [SELECT Id, vlocity_cmt__OrchestrationItemDefinitionId__r.vlocity_cmt__OrchestrationPlanDefinitionId__c
-            FROM vlocity_cmt__OrchestrationDependencyDefinition__c
-            WHERE vlocity_cmt__DependencyItemDefinitionId__r.vlocity_cmt__OrchestrationPlanDefinitionId__c IN :planId
-            AND Id NOT IN :skipDependencies];
-    
+
+        List<vlocity_cmt__OrchestrationDependencyDefinition__c> dependencies = [
+                SELECT Id, vlocity_cmt__OrchestrationItemDefinitionId__r.vlocity_cmt__OrchestrationPlanDefinitionId__c
+                FROM vlocity_cmt__OrchestrationDependencyDefinition__c
+                WHERE vlocity_cmt__DependencyItemDefinitionId__r.vlocity_cmt__OrchestrationPlanDefinitionId__c IN :planId
+                AND Id NOT IN :skipDependencies
+        ];
+
         for (vlocity_cmt__OrchestrationDependencyDefinition__c dependency : dependencies) {
             skipDependencies.add(dependency.Id);
             uniquePlanIds.add(dependency.vlocity_cmt__OrchestrationItemDefinitionId__r.vlocity_cmt__OrchestrationPlanDefinitionId__c);
         }
-    
+
         if (uniquePlanIds.size() > 0) {
             List<Id> ids = new List<Id>(uniquePlanIds);
             List<Id> recursiveIds = getAllPlanDefinitions(ids, skipDependencies);
@@ -259,42 +275,46 @@ global with sharing class CloneOrchestrationScenario{
                 uniquePlanIds.addAll(recursiveIds);
             }
         }
-    
+
         return new List<Id>(uniquePlanIds);
     }
-    
 
-    private static Map<Id, String> getScenariosMap(List<Id> plansId){
 
-        Map<Id,String> scenariosMap = new Map<Id, String>();
-        List<vlocity_cmt__OrchestrationScenario__c> scenarios = [ SELECT Id, Name FROM vlocity_cmt__OrchestrationScenario__c
-        WHERE vlocity_cmt__OrchestrationPlanDefinitionId__c IN :plansId];
+    private static Map<Id, String> getScenariosMap(List<Id> plansId, String action, String subaction, Set<Id> relatedProducts) {
+
+        Map<Id, String> scenariosMap = new Map<Id, String>();
+        List<vlocity_cmt__OrchestrationScenario__c> scenarios = [
+                SELECT Id, Name
+                FROM vlocity_cmt__OrchestrationScenario__c
+                WHERE vlocity_cmt__OrchestrationPlanDefinitionId__c IN :plansId
+                AND vlocity_cmt__Action__c = :action AND vlocity_cmt__SubAction__c = :subaction AND vlocity_cmt__Product2Id__c IN :relatedProducts
+        ];
 
         for (vlocity_cmt__OrchestrationScenario__c scenario : scenarios) {
             scenariosMap.put(scenario.Id, scenario.Name);
         }
-       
+
         return scenariosMap;
     }
 
-    private static Map<String,String> cloneOrchestrationItemsWithDependencies(List<Id> planIds, Map<Id,Id> newPlanIds) {
+    private static Map<String, String> cloneOrchestrationItemsWithDependencies(List<Id> planIds, Map<Id, Id> newPlanIds) {
         // Retrieve fields dynamically for the child object, excluding system fields
         List<String> orchItemFields = getUpdateableFields(Schema.getGlobalDescribe().get('vlocity_cmt__OrchestrationItemDefinition__c'));
         List<Id> existingIds = new List<Id>();
-        
-        Map<String,String> newItems = new Map<String, String>(); //should be mapped by <existingRecordId, clonedRecordId>
-        
+
+        Map<String, String> newItems = new Map<String, String>(); //should be mapped by <existingRecordId, clonedRecordId>
+
         // Construct dynamic SOQL query
         String OrchItemssoql = 'SELECT Id, vlocity_cmt__OrchestrationPlanDefinitionId__c, ' + String.join(orchItemFields, ',') +
-                      ' FROM vlocity_cmt__OrchestrationItemDefinition__c' +
-                      ' WHERE vlocity_cmt__OrchestrationPlanDefinitionId__c IN :planIds';
+                ' FROM vlocity_cmt__OrchestrationItemDefinition__c' +
+                ' WHERE vlocity_cmt__OrchestrationPlanDefinitionId__c IN :planIds';
         System.debug('OrchItemssoql -> ' + OrchItemssoql);
         List<sObject> orchItems = Database.query(OrchItemssoql);
         List<sObject> clonedorchItems = new List<sObject>();
 
         for (sObject item : orchItems) {
             sObject clonedItem = item.clone(false, true);
-            Id tempPlanId = (Id)item.get('vlocity_cmt__OrchestrationPlanDefinitionId__c');
+            Id tempPlanId = (Id) item.get('vlocity_cmt__OrchestrationPlanDefinitionId__c');
             clonedItem.put('vlocity_cmt__OrchestrationPlanDefinitionId__c', newPlanIds.get(tempPlanId));
             existingIds.add(item.Id);
 
@@ -302,17 +322,17 @@ global with sharing class CloneOrchestrationScenario{
         }
 
         insert clonedorchItems;
-        
-        for (sObject item : clonedorchItems){
-            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() +', value -> ' + item.Id);
+
+        for (sObject item : clonedorchItems) {
+            System.debug('Putting into newItems, key ->' + item.getCloneSourceId() + ', value -> ' + item.Id);
             newItems.put(item.getCloneSourceId(), item.Id);
         }
 
         List<String> dependencyFields = getUpdateableFields(Schema.getGlobalDescribe().get('vlocity_cmt__OrchestrationDependencyDefinition__c'));
         System.debug(dependencyFields);
         String soqlDependency = 'SELECT name, vlocity_cmt__dependencyitemdefinitionid__c, vlocity_cmt__dependencytype__c, vlocity_cmt__scope__c, vlocity_cmt__OrchestrationItemDefinitionId__c' +
-                        ' FROM vlocity_cmt__OrchestrationDependencyDefinition__c' +
-                        ' WHERE vlocity_cmt__OrchestrationItemDefinitionId__c IN :existingIds';
+                ' FROM vlocity_cmt__OrchestrationDependencyDefinition__c' +
+                ' WHERE vlocity_cmt__OrchestrationItemDefinitionId__c IN :existingIds';
 
 
         List<vlocity_cmt__OrchestrationDependencyDefinition__c> dependencies = Database.query(soqlDependency);
@@ -327,11 +347,15 @@ global with sharing class CloneOrchestrationScenario{
             System.debug('dependency vlocity_cmt__OrchestrationItemDefinitionId__c -> ' + newItems.get(dependency.vlocity_cmt__OrchestrationItemDefinitionId__c));
             System.debug('dependency vlocity_cmt__DependencyItemDefinitionId__c -> ' + newItems.get(dependency.vlocity_cmt__DependencyItemDefinitionId__c));
 
-            clonedDependency.put('vlocity_cmt__OrchestrationItemDefinitionId__c', newItems.get(dependency.vlocity_cmt__OrchestrationItemDefinitionId__c));
-            clonedDependency.put('vlocity_cmt__DependencyItemDefinitionId__c', newItems.get(dependency.vlocity_cmt__DependencyItemDefinitionId__c));
+            if (dependency.vlocity_cmt__OrchestrationItemDefinitionId__c != null && newItems.get(dependency.vlocity_cmt__DependencyItemDefinitionId__c) != null) {
+                clonedDependency.put('vlocity_cmt__OrchestrationItemDefinitionId__c', newItems.get(dependency.vlocity_cmt__OrchestrationItemDefinitionId__c));
+                clonedDependency.put('vlocity_cmt__DependencyItemDefinitionId__c', newItems.get(dependency.vlocity_cmt__DependencyItemDefinitionId__c));
+            } else {
+                System.debug('Skipping dependency not relevant for this process.');
+            }
 
             clonedDependencies.add(clonedDependency);
-    }
+        }
 
         insert clonedDependencies;
 
@@ -354,10 +378,10 @@ global with sharing class CloneOrchestrationScenario{
     }
 
     public class Results {
-        @InvocableVariable(label='Scenario ID' description='' required=true)
+        @InvocableVariable(Label='Scenario ID' Description='' Required=true)
         public Id scenarioId;
 
-        @InvocableVariable(label='Scenario Map' description='' required=true)
+        @InvocableVariable(Label='Scenario Map' Description='' Required=true)
         public String scenarioMap;
     }
 }

@@ -17,10 +17,10 @@ export default class MultiStepForm extends LightningElement {
     @track stepTwoInput = '';
     @track selectedProductId = null;
 
-    @track scenariosMap = []; 
+    @track scenariosMap = [];
     @track scenariosWithProducts = [];
     @track error;
-    
+
     @api recordId; // Record Id passed from the page
 
     @wire(getRecord, { recordId: '$recordId', fields: FIELDS })
@@ -61,10 +61,10 @@ export default class MultiStepForm extends LightningElement {
         console.log('handleProductSelected');
         const { scenarioId, productId, scenarioNewName } = event.detail;
         console.log(`Scenario ID: ${scenarioId}, Product2 ID: ${productId}, Scneario Name: ${scenarioNewName}`);
-    
+
         // Check if a map with the same scenarioId already exists
         const existingIndex = this.scenariosWithProducts.findIndex(item => item.scenarioId === scenarioId);
-    
+
         if (existingIndex !== -1) {
             // Update the existing map
             console.log('existing index', { 'scenarioId': scenarioId, 'productId': productId, 'scenarioNewName': scenarioNewName});
@@ -76,7 +76,7 @@ export default class MultiStepForm extends LightningElement {
             this.scenariosWithProducts.push({ 'scenarioId': scenarioId, 'productId': productId, 'scenarioNewName': scenarioNewName });
 
         }
-    
+
         console.log('Updated scenariosWithProducts:', this.scenariosWithProducts);
     }
 
@@ -92,16 +92,20 @@ export default class MultiStepForm extends LightningElement {
 
     callInvokeMethod(params){
         console.log('invokeMethod', params);
+        this.error = null;
         invokeMethod({input: params})
             .then((result) => {
                 if(params.methodName == 'getScenarios'){
                     this.scenariosMap = result.scenariosMap;
-                }   
+                }
                 console.log('result', result);
                 this.stepSpinner = false;
             })
             .catch((error) => {
-                this.error = error;
+                this.error = error.body.exceptionType + ': ' + error.body.message;
+                this.stepOne = true;
+                this.stepTwo = false;
+                this.stepFinal = false;
                 console.log('error', error);
             })
     }
